@@ -50,35 +50,27 @@ def getmovies(url, dbh):
         print(inst)
         print("URL NOT FOUND!")
 
-def getgenres(url, dbh):
-    with urllib.request.urlopen(url) as response:
+def getgenres(movie, dbh):
+    baseurl = 'http://movie.naver.com/movie/bi/mi/basic.nhn?code='
+    ret = []
+    with urllib.request.urlopen(baseurl + movie['code']) as response:
         htmlcode = response.read().decode(response.headers.get_content_charset(), errors='replace')
         soup = BeautifulSoup(htmlcode, 'html.parser')
-        soup = BeautifulSoup(str(soup.find("ul", {"class": "directory_list"})))
         #print(soup.prettify())
-        movies = soup.ul.findAll('li',  recursive=False)
-        for movie in movies:
+        links = soup.findAll('a')
+        for link in links:
             try:
-                newsoup = BeautifulSoup(str(movie), 'html.parser')
-                print(newsoup)
-                titleholder = newsoup.findAll('a', class_=lambda x: x != 'green')
-                print(titleholder)
-                title = titleholder[0].text
-                link = baseurl + titleholder[0]['href']
-                code = link[link.index('=') + 1:]
+                if 'movie/sdb/browsing/bmovie.nhn?genre=' in str(link):
+                    ret.append(link.text)
 
-                print(title)
-                for a in newsoup.findAll('a'):
-                    if 'genre' in str(a):
-                        print(a.text.split('/'))
-                movieitem = {'title': title, 'link': link, 'code': code, 'genre': a.text.split('/')}
-                if dbh.movielist.find({'code': code}).count() < 1:
-                    dbh.movielist.insert_one(movieitem)
             except Exception as inst:
                 print(inst)
                 print("Error with something!")
                 continue
-
+    #    dbh.movielist.update_one({'_id': movie['_id']}, {'$set': {'genre': []}})
+        for genre in ret:
+            dbh.movielist.update_one({'_id': movie['_id']}, {'$addToSet': {'genre': genre}})
+        print(ret)
     #movies = BeautifulSoup(soup.findAll("ul", {"class": "directory_list"}), 'lxml')
 
 def main():
@@ -95,9 +87,12 @@ def main():
 #    dbh.movielist.delete_many({})
 
 
-    for param in params:
+#    for param in params:
 #        getmovies(browseurl + param, dbh)
-        getgenres(browseurl + param, dbh)
+#        getgenres(browseurl + param, dbh)
+    movielist = list(dbh.movielist.find({'valid': True}))
+    for movie in movielist:
+        getgenres(movie, dbh)
 
 
 if __name__ == '__main__':
