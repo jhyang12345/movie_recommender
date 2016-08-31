@@ -14,7 +14,7 @@ def choosegenre(genre, dbh, seen, cands=10):
     counter[originalgenre] = total * 2 // 3
     total = total + counter[genre]
     keys = list(counter.keys())
-    print(keys)
+    #print(keys)
     ranges = [0]
     for i in range(len(keys)):
         ranges.append(ranges[i] + counter[keys[i]])
@@ -24,7 +24,7 @@ def choosegenre(genre, dbh, seen, cands=10):
     for key in counter:
         if counter[key] != 0:
             genrecands[key] = []
-            for movie in dbh.movielist.find({'genre': {'$in': [key]}}).sort('rating', -1)[:cands]:
+            for movie in dbh.movielist.find({'valid': True, 'genre': {'$in': [key]}}).sort('rating', -1)[:cands]:
                 genrecands[key].append(movie)
             random.shuffle(genrecands[key])
     ret = []
@@ -53,7 +53,7 @@ def main():
         ret = []
         for movie in movieseen:
             genres = dbh.movielist.find_one({'code': movie})['genre']
-            print(genres)
+        #    print(genres)
             for genre in genres:
                 ret = ret + choosegenre(genre, dbh, movieseen)
 

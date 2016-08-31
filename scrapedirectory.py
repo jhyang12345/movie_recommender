@@ -9,6 +9,8 @@ testurl = 'http://movie.naver.com/movie/sdb/browsing/bmovie.nhn?open=2016&nation
 browseurl = 'http://movie.naver.com/movie/sdb/browsing/bmovie.nhn?'
 baseurl = 'http://movie.naver.com'
 
+banlist = ['TV시리즈', 'TV영화', '단편영화', '비디오영화', '옴니버스영화', '뮤직비디오', '옴니버스영화', '웹드라마', '인터넷영화']
+
 def getparams():
     years = open('years.txt', 'r')
     countries = open('countries.txt', 'r')
@@ -32,6 +34,37 @@ def getmovies(url, dbh):
 
             movielist = soup.findAll("ul", {"class": "directory_list"})[0].findAll('a', class_=lambda x: x != 'green')
             #print(movielist)
+
+            movieul = soup.findAll("ul", {"class": "directory_list"})[0]
+
+            for li in movieul.children:
+                soup = BeautifulSoup(str(li), 'html.parser')
+                movie = soup.findAll('a', class_=lambda x: x != 'green')
+                if movie != []:
+                    movie = movie[0]
+                    title = movie.text
+                    link = baseurl + movie['href']
+                    code = link[link.index('=') + 1:]
+                    movieitem = {'title': title, 'link': link, 'code': code}
+                    #print(movieitem)
+                    if dbh.movielist.find({'code': code}).count() < 1:
+                        dbh.movielist.insert_one(movieitem)
+                        print("Inserting movie: " + title)
+                    elif dbh.movielist.find({'code': code}).count() == 1 and '단팥빵' in str(soup):
+                        print(soup)
+                        seen = False
+                        for ban in banlist:
+                            if ban in str(soup):
+                                seen = True
+                                break
+                        if seen:
+                            dbh.movielist.update_one({'code': code}, {'$set': {'valid': False}})
+                            print("Invalid movie!")
+                            #print(soup)
+                    #else if dbh.movielist.find({'code': code}).count() == 1:
+                #print(movie)
+
+            """
             for movie in movielist:
                 try:
                     title = movie.text
@@ -42,10 +75,13 @@ def getmovies(url, dbh):
                     if dbh.movielist.find({'code': code}).count() < 1:
                         dbh.movielist.insert_one(movieitem)
                         print("Inserting movie: " + title)
+                    #else if dbh.movielist.find({'code': code}).count() == 1:
+
                 except Exception as inst:
                     print(inst)
                     #print("Unable to add movie:" + title)
                     continue
+            """
     except Exception as inst:
         print(inst)
         print("URL NOT FOUND!")
@@ -87,12 +123,12 @@ def main():
 #    dbh.movielist.delete_many({})
 
 
-#    for param in params:
-#        getmovies(browseurl + param, dbh)
+    for param in params:
+        getmovies(browseurl + param, dbh)
 #        getgenres(browseurl + param, dbh)
     movielist = list(dbh.movielist.find({'valid': True}))
-    for movie in movielist:
-        getgenres(movie, dbh)
+#    for movie in movielist:
+#        getgenres(movie, dbh)
 
 
 if __name__ == '__main__':
