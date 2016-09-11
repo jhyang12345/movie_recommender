@@ -1,12 +1,23 @@
 from pymongo import MongoClient
 import random
 
+def getgenrepreference(movieseen, dbh):#simply counting up the genre preferences for user
+    counter = {}
+    for movie in movieseen:
+        for genre in dbh.movielist.find_one({'code': movie})['genre']:
+            if genre not in counter:
+                counter[genre] = 1
+            else:
+                counter[genre] += 1
+    
+
+
 def choosegenre(genre, dbh, seen, cands=10):
     thisgenre = dbh.genrecounts.find_one({'type': genre})
     counter = {}
     total = 0
 
-    originalgenre = genre
+    originalgenre = genre#original genre that is being referenced
     for genre in thisgenre:
         if genre != '_id' and genre != 'type':
             counter[genre] = thisgenre[genre]
@@ -24,8 +35,12 @@ def choosegenre(genre, dbh, seen, cands=10):
     for key in counter:
         if counter[key] != 0:
             genrecands[key] = []
-            for movie in dbh.movielist.find({'valid': True, 'genre': {'$in': [key]}}).sort('rating', -1)[:cands]:
-                genrecands[key].append(movie)
+            #include the original genre among the candidates
+            movielist = list(dbh.movielist.find({'valid': True, 'genre': {'$in': [key, originalgenre]}}).sort('rating', -1))
+            while(len(genrecands[key]) < cands and movielist != []):
+                movie = movielist.pop(0)
+                if movie['code'] not in seen:
+                    genrecands[key].append(movie)
             random.shuffle(genrecands[key])
     ret = []
     genrespicked = []
@@ -60,7 +75,7 @@ def main():
         ret = list(set([code['code'] for code in ret]))
         ret.sort(key=lambda x: dbh.movielist.find_one({'code': x})['rating'])
         for movie in ret[:10]:
-            print(dbh.movielist.find_one({'code': movie})['title'])
+            print(dbh.movielist.find_one({'code': movie})['title'], dbh.movielist.find_one({'code': movie})['code'])
 
 
 if __name__ == '__main__':

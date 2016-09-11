@@ -4,12 +4,13 @@ import requests, codecs, urllib, re
 import urllib.request
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+from multithreading import multithreading
 
 testurl = 'http://movie.naver.com/movie/sdb/browsing/bmovie.nhn?open=2016&nation=KR&page=14'
 browseurl = 'http://movie.naver.com/movie/sdb/browsing/bmovie.nhn?'
 baseurl = 'http://movie.naver.com'
 
-banlist = ['TV시리즈', 'TV영화', '단편영화', '비디오영화', '옴니버스영화', '뮤직비디오', '옴니버스영화', '웹드라마', '인터넷영화']
+banlist = ['TV시리즈', 'TV영화', '단편영화', '비디오영화', '옴니버스영화', '뮤직비디오', '옴니버스영화', '웹드라마', '인터넷영화', '공연실황', '뮤지컬']
 
 def getparams():
     years = open('years.txt', 'r')
@@ -19,7 +20,7 @@ def getparams():
     ret = []
     for year in years:
         for country in countries:
-            for page in range(1, 40):
+            for page in range(1, 50):
                 ret.append(urllib.parse.urlencode((('open', str(year)), ('nation', str(country)), ('page', str(page)))))
     print(ret)
     return ret
@@ -50,7 +51,7 @@ def getmovies(url, dbh):
                     if dbh.movielist.find({'code': code}).count() < 1:
                         dbh.movielist.insert_one(movieitem)
                         print("Inserting movie: " + title)
-                    elif dbh.movielist.find({'code': code}).count() == 1 and '단팥빵' in str(soup):
+                    elif dbh.movielist.find({'code': code}).count() == 1:
                         print(soup)
                         seen = False
                         for ban in banlist:
@@ -104,6 +105,8 @@ def getgenres(movie, dbh):
                 print("Error with something!")
                 continue
     #    dbh.movielist.update_one({'_id': movie['_id']}, {'$set': {'genre': []}})
+        if ret == []:
+            dbh.movielist.update_one({'_id': movie['_id']}, {'$set': {'valid': False}})
         for genre in ret:
             dbh.movielist.update_one({'_id': movie['_id']}, {'$addToSet': {'genre': genre}})
         print(ret)
@@ -122,11 +125,12 @@ def main():
 #start with fresh palette
 #    dbh.movielist.delete_many({})
 
+    multithreading(getmovies, [[browseurl + param, dbh] for param in params])
+#    for param in params:
+#        getmovies(browseurl + param, dbh)
 
-    for param in params:
-        getmovies(browseurl + param, dbh)
 #        getgenres(browseurl + param, dbh)
-    movielist = list(dbh.movielist.find({'valid': True}))
+#    movielist = list(dbh.movielist.find({'valid': True}))
 #    for movie in movielist:
 #        getgenres(movie, dbh)
 

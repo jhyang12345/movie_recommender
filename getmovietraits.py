@@ -2,6 +2,7 @@ from pymongo import MongoClient
 import sys, codecs, re
 import urllib.request
 from bs4 import BeautifulSoup
+from multithreading import multithreading
 
 baseurl = 'http://movie.naver.com'
 
@@ -34,7 +35,7 @@ def getmainactors(movie, dbh):
 def gettraits(movie, dbh):
     link = movie['link']
     title = movie['title']
-    dbh.movielist.update({'_id': movie['_id']}, {'$set': {"valid": True}})
+#    dbh.movielist.update({'_id': movie['_id']}, {'$set': {"valid": True}})
     try:
         with urllib.request.urlopen(link) as page:
             page = page.read().decode(page.headers.get_content_charset(), errors='replace')
@@ -75,12 +76,14 @@ def gettraits(movie, dbh):
                 netraters = int(BeautifulSoup(str(soup.find('div', {'id': 'pointNetizenCountBasic'})), 'html.parser').find('em').text.replace(',', ''))
                 print(netraters)
 
-            if audrating != 0.0 or netrating != 0.0 and (netraters > 30 or audraters > 30):
+            if (audrating != 0.0 or netrating != 0.0) and (netraters > 30 or audraters > 30):
                 if netraters > audraters:
                     dbh.movielist.update({'_id': movie['_id']}, {'$set': {"rating": netrating}})
+                    dbh.movielist.update({'_id': movie['_id']}, {'$set': {"raters": netraters}})
                     print("Updated rating as:", netrating)
                 else:
                     dbh.movielist.update({'_id': movie['_id']}, {'$set': {"rating": audrating}})
+                    dbh.movielist.update({'_id': movie['_id']}, {'$set': {"raters": audraters}})
                     print("Updated rating as:", audrating)
             else:
                 dbh.movielist.update({'_id': movie['_id']}, {'$set': {"valid": False}})
@@ -116,8 +119,11 @@ def gettraits(movie, dbh):
                 print("Invalid movie!")
                 print("Not found!")
                 return
-
-            dbh.movielist.update({'_id': movie['_id']}, {'$set': {'actors': getmainactors(movie, dbh)}})
+            mainactors = getmainactors(movie, dbh)
+            if mainactors:
+                dbh.movielist.update({'_id': movie['_id']}, {'$set': {'actors': getmainactors(movie, dbh)}})
+            else:
+                dbh.movielist.update({'_id': movie['_id']}, {'$set': {'valid': False}})
 
     except Exception as inst:
         print(str(inst))
@@ -134,9 +140,9 @@ def main():
     except:
         print("Unable to reach database!")
         sys.exit(1)
-    movies = dbh.movielist.find({})
-    for movie in movies:
-        gettraits(movie, dbh)
+    movies = list(dbh.movielist.find({}))
+    multithreading(gettraits, [[movie, dbh] for movie in movies])
+
 
 if __name__ == '__main__':
     main()
