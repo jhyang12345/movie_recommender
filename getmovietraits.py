@@ -20,8 +20,10 @@ def getmainactors(movie, dbh):
                     actoritem = {}
                     name = actor.find('a').text
                     link = baseurl + actor.find('a')['href']
-                    code = link[link.index('=') + 1:]
+                    baselink = actor.find('a')['href']
+                    code = baselink[baselink.index('=') + 1:]
                     actoritem = {'name': name, 'link': link, 'code': code}
+                    print("Printing Code", code)
                     ret.append(actoritem)
                     if dbh.actorlist.find({'code': code}).count() < 1:
                         dbh.actorlist.insert_one(actoritem)

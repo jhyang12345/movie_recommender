@@ -29,7 +29,7 @@ def main():
         for x in movie['genre']:
             for y in movie['genre']:
                 if x != y:
-                    dbh.genrecounts.update_one{'type': x}, {'$inc': {y: 1}})
+                    dbh.genrecounts.update_one({'type': x}, {'$inc': {y: 1}})
                     print("Incrementing", x, "for", y)
 
 if __name__ == '__main__':

@@ -52,7 +52,7 @@ def getmovies(url, dbh):
                         dbh.movielist.insert_one(movieitem)
                         print("Inserting movie: " + title)
                     elif dbh.movielist.find({'code': code}).count() == 1:
-                        print(soup)
+                        #print(soup)
                         seen = False
                         for ban in banlist:
                             if ban in str(soup):
@@ -65,7 +65,7 @@ def getmovies(url, dbh):
                     #else if dbh.movielist.find({'code': code}).count() == 1:
                 #print(movie)
 
-            """
+
             for movie in movielist:
                 try:
                     title = movie.text
@@ -82,7 +82,7 @@ def getmovies(url, dbh):
                     print(inst)
                     #print("Unable to add movie:" + title)
                     continue
-            """
+
     except Exception as inst:
         print(inst)
         print("URL NOT FOUND!")
